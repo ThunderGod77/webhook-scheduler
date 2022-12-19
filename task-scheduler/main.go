@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
@@ -11,6 +12,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/google/uuid"
+	"log"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -85,8 +88,40 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	switch request.Path {
 	case "/api/task":
+		if request.HTTPMethod != "POST" {
+			return events.APIGatewayProxyResponse{
+				Body:       fmt.Sprintf("method not allowed"),
+				StatusCode: 405,
+			}, nil
+		}
+		var tq TaskReq
+		err := json.Unmarshal([]byte(request.Body), &tq)
+		if err != nil {
+			log.Println(err)
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusBadRequest,
+				Body:       fmt.Sprintf("Error parsing body of the request"),
+			}, err
+		}
+		if tq.Url == "" || tq.Time == "" || tq.Body == "" || tq.Email == "" {
+
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusBadRequest,
+				Body:       fmt.Sprintf("you are missing the required fields for the request"),
+			}, errors.New("you are missing the required fields")
+		}
+		taskId, err := AddTask(&tq)
+		if err != nil {
+			log.Println(err)
+			return events.APIGatewayProxyResponse{
+				StatusCode: http.StatusInternalServerError,
+				Body:       fmt.Sprintf(err.Error()),
+			}, err
+		}
+
+		fmt.Printf("Task created %s \n", taskId)
 		return events.APIGatewayProxyResponse{
-			Body:       fmt.Sprintf("Hello, %v", string("This is the task path")),
+			Body:       fmt.Sprintf("Task has been succesfully registered with id %s", taskId),
 			StatusCode: 200,
 		}, nil
 
