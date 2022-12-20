@@ -44,6 +44,7 @@ Resources:
       FunctionName: task-run
       Policies:
         - AmazonDynamoDBFullAccess
+        - SQSSendMessagePolicy
       Architectures:
         - x86_64
       Events:
@@ -63,6 +64,8 @@ Resources:
       CodeUri: webhook-worker/
       Handler: webhook-worker
       Runtime: go1.x
+      Policies:
+        - SQSPollerPolicy
       Events:
         MySQSEvent:
           Type: SQS
