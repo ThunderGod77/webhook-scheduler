@@ -54,6 +54,23 @@ Resources:
 
       Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
         Variables:
+          Queue: !GetAtt MySqsQueue.QueueName
+  MySqsQueue:
+    Type: AWS::SQS::Queue
+  MySQSQueueFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: webhook-worker/
+      Handler: webhook-worker
+      Runtime: go1.x
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt MySqsQueue.Arn
+            BatchSize: 10
+      Environment:
+        Variables:
           PARAM1: VALUE
   DynamoDBTable:
     Type: AWS::DynamoDB::Table
