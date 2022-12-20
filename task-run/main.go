@@ -21,6 +21,10 @@ func GetPartitionKey(tm time.Time) string {
 	return pk
 }
 
+func AddTask(tasks []map[string]types.AttributeValue) error {
+	return nil
+}
+
 func handler(request events.CloudWatchEvent) error {
 	pk := GetPartitionKey(request.Time)
 	fmt.Println(pk)
@@ -42,8 +46,10 @@ func handler(request events.CloudWatchEvent) error {
 		log.Println(err)
 		return err
 	}
-	for i, _ := range out.Items {
-		fmt.Println(i)
+	err = AddTask(out.Items)
+	if err != nil {
+		log.Println(err)
+		return err
 	}
 	return nil
 
