@@ -15,15 +15,12 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
 var (
 	// DefaultHTTPGetAddress Default Address
-	DefaultHTTPGetAddress = "https://checkip.amazonaws.com"
-
-	// ErrNoIP No IP found in response
-	ErrNoIP = errors.New("No IP in HTTP response")
 
 	// ErrNon200Response non 200 status code in response
 	ErrNon200Response = errors.New("Non 200 Response found")
@@ -44,7 +41,7 @@ func GetPartitionKey(tm time.Time) string {
 }
 
 func GetSortKey(tm time.Time) (string, string) {
-	sk := tm.String()
+	sk := tm.Format("2006-01-02 T 15:04")
 	taskId := uuid.New().String()
 	return sk + "|" + taskId, taskId
 
@@ -82,6 +79,26 @@ func AddTask(tq *TaskReq) (string, error) {
 	fmt.Println(out.ConsumedCapacity)
 	return taskId, nil
 
+}
+
+func GetTask(taskId string) (map[string]types.AttributeValue, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	svc := dynamodb.NewFromConfig(cfg)
+	primaryKey := strings.Split(taskId, "|")[0]
+	out, err := svc.GetItem(context.TODO(), &dynamodb.GetItemInput{
+		TableName: aws.String("task-table"),
+		Key: map[string]types.AttributeValue{
+			"MinuteTime":     &types.AttributeValueMemberS{Value: primaryKey},
+			"TaskIdentifier": &types.AttributeValueMemberS{Value: taskId},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return out.Item, nil
 }
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
@@ -122,6 +139,34 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		fmt.Printf("Task created %s \n", taskId)
 		return events.APIGatewayProxyResponse{
 			Body:       fmt.Sprintf("Task has been succesfully registered with id %s", taskId),
+			StatusCode: 200,
+		}, nil
+	case "/task/status":
+		parameters := request.QueryStringParameters
+		taskId, ok := parameters["id"]
+		if !ok {
+			return events.APIGatewayProxyResponse{
+				Body:       fmt.Sprintf("task id is not present"),
+				StatusCode: http.StatusBadRequest,
+			}, nil
+		}
+		task, err := GetTask(taskId)
+		if err != nil {
+			return events.APIGatewayProxyResponse{
+				Body:       err.Error(),
+				StatusCode: http.StatusBadRequest,
+			}, err
+		}
+		marshal, err := json.Marshal(task)
+		if err != nil {
+
+			return events.APIGatewayProxyResponse{
+				Body:       err.Error(),
+				StatusCode: http.StatusBadRequest,
+			}, err
+		}
+		return events.APIGatewayProxyResponse{
+			Body:       string(marshal),
 			StatusCode: 200,
 		}, nil
 
