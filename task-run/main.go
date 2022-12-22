@@ -42,7 +42,7 @@ func SendMsg(c context.Context, api SQSSendMessageAPI, input *sqs.SendMessageInp
 }
 
 func AddTaskToQueue(tasks []map[string]types.AttributeValue) error {
-	cfg, err := config.LoadDefaultConfig(context.TODO())
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion("ap-south-1"))
 	if err != nil {
 		panic("configuration error, " + err.Error())
 	}
@@ -51,13 +51,18 @@ func AddTaskToQueue(tasks []map[string]types.AttributeValue) error {
 	if queue == "" {
 		return errors.New("could not get queue name")
 	}
+	fmt.Println(queue == "beta-1-MySqsQueue-IHw1uAJJCu8p")
+	//queue = "beta-1-MySqsQueue-IHw1uAJJCu8p"
 	gQInput := &sqs.GetQueueUrlInput{
 		QueueName: &queue,
 	}
+
 	result, err := GetQueueURL(context.TODO(), client, gQInput)
 	if err != nil {
+
 		return err
 	}
+	fmt.Println(*result.QueueUrl)
 	queueURL := result.QueueUrl
 	for _, task := range tasks {
 		marshal, err := json.Marshal(task)

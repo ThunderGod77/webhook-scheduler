@@ -44,7 +44,14 @@ Resources:
       FunctionName: task-run
       Policies:
         - AmazonDynamoDBFullAccess
-        - SQSSendMessagePolicy
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt MySqsQueue.QueueName
+        - Version: '2012-10-17' # Policy Document
+          Statement:
+            - Effect: Allow
+              Action:
+                - sqs:GetQueueUrl
+              Resource: !GetAtt MySqsQueue.Arn
       Architectures:
         - x86_64
       Events:
@@ -64,8 +71,6 @@ Resources:
       CodeUri: webhook-worker/
       Handler: webhook-worker
       Runtime: go1.x
-      Policies:
-        - SQSPollerPolicy
       Events:
         MySQSEvent:
           Type: SQS
