@@ -141,7 +141,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			Body:       fmt.Sprintf("Task has been succesfully registered with id %s", taskId),
 			StatusCode: 200,
 		}, nil
-	case "/task/status":
+	case "api/task/status":
 		parameters := request.QueryStringParameters
 		taskId, ok := parameters["id"]
 		if !ok {
